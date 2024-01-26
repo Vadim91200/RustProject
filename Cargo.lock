@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "RustProject"
+name = "RustFrontEnd"
 version = "0.1.0"
 dependencies = [
  "plotters",

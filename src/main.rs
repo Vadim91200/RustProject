@@ -92,8 +92,7 @@ fn app() -> Html {
             <button type="button" class="time-button" onclick={onclick3}>{"365 days"}</button>
             </h4>
             </div>
-        </div>
-        <div class="card">
+
             <h4>{"The expected price is: "}
                 {state.result_text}
             </h4>
