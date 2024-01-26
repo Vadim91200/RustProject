@@ -1,157 +1,107 @@
-use reqwest;
-use serde_json::Value;
-use std::error::Error;
-extern crate rand; // Utiliser la bibliothèque rand pour la génération aléatoire
-
-use rand::distributions::{Distribution, Uniform};
-use std::vec::Vec;
-use std::io;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-
-    let api_key = "3d6196706fb24bf1b30ce1e8444ae0b1"; // Replace with your API key
+use yew::prelude::*;
+use wasm_bindgen::JsCast;
+use web_sys::{EventTarget, HtmlInputElement};
 
 
-    //let symbol = "AAPL"; // Stock symbol, e.g., AAPL for Apple Inc.
-    println!("Enter the stock symbol/ticker:");
-    let mut symbol = String::new();
-    io::stdin().read_line(&mut symbol)?;
-    // Trim any leading or trailing whitespace
-    symbol = symbol.trim().to_string();
 
-    let interval = "1day";
-
-    //let range = "30days"; // For example, past 30 days
-    println!("Choose the time duration:");
-    println!("1. 30 days");
-    println!("2. 90 days");
-    println!("3. 365 days");
-    let mut choice = String::new();
-    io::stdin().read_line(&mut choice)?;
-    // Trim any leading or trailing whitespace
-    choice = choice.trim().to_string();
-    // Validate time duration choice
-    let range = match choice.as_str() {
-        "1" => "30days",
-        "2" => "90days",
-        "3" => "365days",
-        _ => {
-            eprintln!("Invalid choice. Please enter 1, 2, or 3.");
-            return Ok(());
-        }
-    };
-
-    let url = format!(
-        "https://api.twelvedata.com/time_series?symbol={}&interval={}&range={}&apikey={}",
-        symbol, interval, range, api_key
-    );
-    
-    match reqwest::get(&url).await {
-        Ok(response) => {
-            if response.status().is_success() {
-                let response_text = response.text().await?;
-                let json: serde_json::Value = serde_json::from_str(&response_text)?;
-    
-                // Check if the JSON response indicates a symbol not found error
-                if let Some(code) = json.get("code") {
-                    if let Some(code_value) = code.as_u64() {
-                        if code_value == 404 {
-                            // Symbol not found
-                            if let Some(message) = json.get("message") {
-                                if let Some(message_str) = message.as_str() {
-                                    eprintln!("{}", message_str);
-                                } else {
-                                    eprintln!("Symbol not found, but couldn't parse the error message");
-                                }
-                            } else {
-                                eprintln!("Symbol not found, but the error response doesn't contain a message");
-                            }
-    
-                            // Handle the case when the symbol is not found
-                        } else {
-                            // Process the JSON data using a separate function
-                            process_json_data(&json)?;
-                        }
-                    }
-                } else {
-                    // Process the JSON data using a separate function
-                    process_json_data(&json)?;
-                }
-            } else {
-                eprintln!("Request failed with status code: {}", response.status());
-                // Handle other non-success status codes if needed
-            }
-        }
-        Err(err) => {
-            eprintln!("Error making the request: {}", err);
-        }
-    }
-
-    Ok(())
+struct Model {
+    input_text: String,
+    duration: u64,
+    result_text: f64,
 }
 
 
-// Function to process JSON data
-fn process_json_data(json: &Value) -> Result<(), Box<dyn Error>> {
-    let mut dates = Vec::new();
-    let mut daily_prices = Vec::new();
+#[function_component(App)]
+fn app() -> Html {
+    let state = use_state(|| Model {
+        input_text: String::default(),
+        duration: 0,
+        result_text: 0.0,
+    });
 
-    if let Some(data) = json["values"].as_array() {
-        for entry in data {
-            if let (Some(date), Some(open)) = (entry["datetime"].as_str(), entry["close"].as_str()) {
-                dates.push(date);
-                daily_prices.push(open.parse::<f32>()?);
-            }
-        }
+
+    let on_input = {
+        let state = state.clone();
+        Callback::from(move |e: Event| {
+            let target: EventTarget = e.target().expect("Event should have a target when dispatched");
+            let input = target.unchecked_into::<HtmlInputElement>().value();
+                state.set(Model {
+                    input_text: input,
+                    duration:state.duration.clone(),
+                    result_text: state.result_text.clone()
+                })
+        })
+    };
+
+    let onclick1 = {
+        let state = state.clone();
+
+        Callback::from(move |_| {
+            state.set(Model {
+                input_text: state.input_text.clone(),
+                duration: 1,
+                result_text: state.result_text.clone(),
+            });
+            //GetResult(state);
+        })
+    };
+
+    let onclick2 = {
+        let state = state.clone();
+
+        Callback::from(move |_| {
+            state.set(Model {
+                input_text: state.input_text.clone(),
+                duration: 2,
+                result_text: state.result_text.clone(),
+            });
+            //GetResult(state);
+        })
+    };
+
+    let onclick3 = {
+        let state = state.clone();
+
+        Callback::from(move |_| {
+            state.set(Model {
+                input_text: state.input_text.clone(),
+                duration: 3,
+                result_text: state.result_text.clone(),
+            });
+            //GetResult(state);
+        })
+    };
+
+
+    html! {
+        <>
+        <div class="card">
+            <h1> {"Price Prediction"}</h1>
+            <h4 for="Chosen Ticker">
+                { "Enter the ticker of the company you want to look up: " }
+                <input onchange={on_input}
+                    id="chosen-ticker"
+                    type="text"
+                    value={state.input_text.clone()}
+                />
+            </h4>
+            <div>
+            <h4>{"For which duration would you like to know the expected price: "}
+            <button type="button" class="time-button" onclick={onclick1}>{"30 days"}</button>
+            <button type="button" class="time-button" onclick={onclick2}>{"90 days"}</button>
+            <button type="button" class="time-button" onclick={onclick3}>{"365 days"}</button>
+            </h4>
+            </div>
+        </div>
+        <div class="card">
+            <h4>{"The expected price is: "}
+                {state.result_text}
+            </h4>
+        </div>
+        </>
     }
+}
 
-    // Calculate daily returns
-    let mut returns = Vec::new();
-    for i in 0..daily_prices.len() - 1 {
-        let daily_return = (daily_prices[i + 1] - daily_prices[i]) / daily_prices[i];
-        returns.push(daily_return);
-    }
-
-    let num_simulations = 1000;
-    let days_to_simulate = 90;
-    let mut simulations: Vec<Vec<f64>> = Vec::with_capacity(num_simulations);
-
-    let mut rng = rand::thread_rng();
-    let between = Uniform::from(0..returns.len());
-
-    // Perform Monte Carlo simulations
-    for _ in 0..num_simulations {
-        let mut simulated_prices = Vec::with_capacity(days_to_simulate);
-        let mut last_price = *daily_prices.last().unwrap();
-
-        for _ in 0..days_to_simulate {
-            let random_index = between.sample(&mut rng);
-            let random_return = returns[random_index];
-            last_price *= 1.0 + random_return;
-            simulated_prices.push(last_price.into());
-        }
-
-        simulations.push(simulated_prices);
-    }
-
-    // Gather final prices of each simulation
-    let mut final_prices = Vec::new();
-    for simulation in &simulations {
-        if let Some(&last_price) = simulation.last() {
-            final_prices.push(last_price);
-        }
-    }
-
-    // Calculate the average of final prices
-    if !final_prices.is_empty() {
-        let sum: f64 = final_prices.iter().sum();
-        let mean = sum / final_prices.len() as f64;
-
-        println!("Moyenne des prix finaux sur toutes les simulations: {}", mean);
-    } else {
-        println!("Aucune donnée disponible pour calculer la moyenne.");
-    }
-
-    Ok(())
+fn main() {
+    yew::Renderer::<App>::new().render();
 }
