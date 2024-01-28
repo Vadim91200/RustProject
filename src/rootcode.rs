@@ -1,30 +1,15 @@
-
-use reqwest;
-use serde_json::Value;
-use std::error::Error;
-extern crate rand; // Utiliser la bibliothèque rand pour la génération aléatoire
-
-use rand::distributions::{Distribution, Uniform};
-use std::vec::Vec;
-use std::io;
-
-
-#[tokio::Result]
-fn GetResult(Model: &state) -> Result<(), Box<dyn Error>>
+async fn GetResult(state: Model) -> Result<(), Box<dyn Error>>
 {
     let api_key = "3d6196706fb24bf1b30ce1e8444ae0b1"; // Replace with your API key
-    let mut symbol = state.duration.clone();
+    let symbol = state.input_text.clone();
     let interval = "1day";
     let choice = state.duration.clone();
 
-    let range = match choice.as_str() {
-        "1" => "30days",
-        "2" => "90days",
-        "3" => "365days",
-        _ => {
-            eprintln!("Invalid choice. Please enter 1, 2, or 3.");
-            return Ok(());
-        }
+    let range = match choice {
+        1 => "30days",
+        2 => "90days",
+        3 => "365days",
+        _ => "0"
     };
 
     let url = format!(
@@ -78,7 +63,7 @@ fn GetResult(Model: &state) -> Result<(), Box<dyn Error>>
 
 
 // Function to process JSON data
-fn process_json_data(json: &Value, Model: &state) -> Result<(), Box<dyn Error>> {
+fn process_json_data(json: &Value, state: Model) -> Result<(), Box<dyn Error>> {
     let mut dates = Vec::new();
     let mut daily_prices = Vec::new();
 
@@ -134,11 +119,13 @@ fn process_json_data(json: &Value, Model: &state) -> Result<(), Box<dyn Error>> 
         let mean = sum / final_prices.len() as f64;
 
         println!("Moyenne des prix finaux sur toutes les simulations: {}", mean);
-        state.set(Model {
-            input_text: state.input_text.clone(),
-            duration: state.duration.clone(),
-            result_text: mean,
-        });
+        Callback::from(move |_| {
+            state.set(Model {
+                input_text: state.input_text.clone(),
+                duration: state.duration.clone(),
+                result_text: mean,
+            });
+        })
 
     } else {
         println!("Aucune donnée disponible pour calculer la moyenne.");

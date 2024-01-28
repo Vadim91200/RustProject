@@ -2,7 +2,7 @@ use yew::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{EventTarget, HtmlInputElement};
 
-
+use rand::Rng;
 
 struct Model {
     input_text: String,
@@ -25,11 +25,20 @@ fn app() -> Html {
         Callback::from(move |e: Event| {
             let target: EventTarget = e.target().expect("Event should have a target when dispatched");
             let input = target.unchecked_into::<HtmlInputElement>().value();
+            state.set(Model {
+                input_text: input,
+                duration:state.duration.clone(),
+                result_text: state.result_text.clone()
+            });
+            if state.duration!=0 {
+                let falseR= FalseResult();
                 state.set(Model {
-                    input_text: input,
-                    duration:state.duration.clone(),
-                    result_text: state.result_text.clone()
-                })
+                input_text: state.input_text.clone(),
+                duration:state.duration.clone(),
+                result_text: falseR
+            });
+
+            }
         })
     };
 
@@ -42,7 +51,14 @@ fn app() -> Html {
                 duration: 1,
                 result_text: state.result_text.clone(),
             });
-            //GetResult(state);
+            if state.input_text!="" {
+                let falseR= FalseResult();
+                state.set(Model {
+                input_text: state.input_text.clone(),
+                duration:state.duration.clone(),
+                result_text: falseR
+            });
+            }
         })
     };
 
@@ -55,7 +71,14 @@ fn app() -> Html {
                 duration: 2,
                 result_text: state.result_text.clone(),
             });
-            //GetResult(state);
+            if state.input_text!="" {
+                let falseR= FalseResult();
+                state.set(Model {
+                input_text: state.input_text.clone(),
+                duration:state.duration.clone(),
+                result_text: falseR
+            });
+            }
         })
     };
 
@@ -68,7 +91,14 @@ fn app() -> Html {
                 duration: 3,
                 result_text: state.result_text.clone(),
             });
-            //GetResult(state);
+            if state.input_text!="" {
+                let falseR= FalseResult();
+                state.set(Model {
+                input_text: state.input_text.clone(),
+                duration:state.duration.clone(),
+                result_text: falseR
+            });
+            }
         })
     };
 
@@ -103,4 +133,12 @@ fn app() -> Html {
 
 fn main() {
     yew::Renderer::<App>::new().render();
+}
+
+fn FalseResult() -> f64 {
+    let mut rng = rand::thread_rng();
+    let n: f64 = rng.gen_range(0.0..1000.0);
+    let rounded_result = (n * 1e4).round() / 1e4;
+
+    return rounded_result;
 }
