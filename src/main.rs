@@ -2,17 +2,19 @@ use rand::rngs::ThreadRng;
 use rand::Rng;
 use rand_distr::Normal;
 use reqwest;
+use std::error::Error;
 use serde_json::Value;
 
 use rand::distributions::{Distribution, Uniform};
 use std::vec::Vec;
-
+use std::io;
+use dotenv::dotenv;
+use std::env;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-
-    let api_key = "3d6196706fb24bf1b30ce1e8444ae0b1"; // Replace with your API key
-
+    dotenv().ok();
+    let api_key = env::var("API_KEY").expect("API_KEY must be set");
 
     //let symbol = "AAPL"; // Stock symbol, e.g., AAPL for Apple Inc.
     println!("Enter the stock symbol/ticker:");
@@ -98,20 +100,23 @@ fn process_json_data(json: &Value) -> Result<(), Box<dyn Error>> {
     let mut dates = Vec::new();
     let mut daily_prices = Vec::new();
 
-    let mut prices = Vec::new();
-    for entry in price_data {
-        let close_price = entry["close"].as_str().ok_or("Price format error")?.parse::<f64>()?;
-        prices.push(close_price);
+    if let Some(data) = json["values"].as_array() {
+        for entry in data {
+            if let (Some(date), Some(open)) = (entry["datetime"].as_str(), entry["close"].as_str()) {
+                dates.push(date);
+                daily_prices.push(open.parse::<f32>()?);
+            }
+        }
     }
 
     let mut daily_returns = Vec::new();
-    for window in prices.windows(2) {
+    for window in daily_prices.windows(2) {
         let log_return = (window[0] / window[1]).ln();
         daily_returns.push(log_return);
     }
 
-    let mean_log_return = daily_returns.iter().sum::<f64>() / daily_returns.len() as f64;
-    let variance: f64 = daily_returns.iter().map(|&r| (r - mean_log_return).powi(2)).sum::<f64>() / (daily_returns.len() - 1) as f64;
+    let mean_log_return = daily_returns.iter().sum::<f32>() / daily_returns.len() as f32;
+    let variance: f32 = daily_returns.iter().map(|&r| (r - mean_log_return).powi(2)).sum::<f32>() / (daily_returns.len() - 1) as f32;
     let daily_volatility = variance.sqrt();
 
     let days = 30;
@@ -120,21 +125,21 @@ fn process_json_data(json: &Value) -> Result<(), Box<dyn Error>> {
 
     let mut predictions = Vec::new();
     for _ in 0..simulations {
-        let predicted_price = simulate_price(&mut rng, prices[0], daily_volatility, days);
+        let predicted_price = simulate_price(&mut rng, daily_prices[0], daily_volatility, days);
         predictions.push(predicted_price);
     }
 
-    let average_price = predictions.iter().sum::<f64>() / simulations as f64;
+    let average_price = predictions.iter().sum::<f32>() / simulations as f32;
     println!("Prix moyen prédit après {} jours : {}", days, average_price);
     Ok(())
 }
 
-fn simulate_price(rng: &mut ThreadRng, start_price: f64, volatility: f64, days: usize) -> f64 {
+fn simulate_price(rng: &mut ThreadRng, start_price: f32, volatility: f32, days: usize) -> f32 {
     let mut price = start_price;
     let drift = 0.0;
 
     for _ in 0..days {
-        let change_pct = drift + volatility * rng.sample::<f64, _>(Normal::new(0.0, 1.0).unwrap());
+        let change_pct = drift + volatility * rng.sample::<f32, _>(Normal::new(0.0, 1.0).unwrap());
         price *= 1.0 + change_pct;
     }
 
